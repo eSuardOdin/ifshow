@@ -2,6 +2,7 @@
 #define IF_FUNCTIONS_H
 
 #include <ifaddrs.h>
+#include <sys/socket.h>
 
 
 struct if_info
@@ -28,27 +29,11 @@ struct if_info* get_if_info(struct if_info *tab, char* ifname, int count);
 
 
 // int is_interface_included(char** tab, char* ifname, int count);
-/**
- * @brief Shows help for command instruction
- * 
- */
+
 void show_console_usage();
-
-/**
- * @brief Here to init the interfaces struct table
- *
- * 
- * @param tab 
- * @param interfaces 
- * @param is_all_interfaces 
- * @param searched_if 
- * @param message 
- * @return int 
- */
-int init_struct_tab(struct if_info* tab, struct ifaddrs *interfaces, unsigned char is_all_interfaces, char *searched_if, char *message);
-
-
-
+int init_struct_tab(struct if_info *tab, struct ifaddrs *interfaces, unsigned char is_all_interfaces, char *searched_if, char *message);
+int add_address(struct ifaddrs *addr, struct if_info *ifc);
 int get_if_addresses(struct if_info *tab, struct ifaddrs *interfaces);
+int format_result(struct if_info *tab, int tab_len, char *buf);
 
 #endif

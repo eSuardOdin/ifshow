@@ -35,7 +35,6 @@ int main(int argc, char** argv)
     struct ifaddrs *interfaces;
 
 
-    char **ifnames = NULL;
     char *message = malloc(BUFFER_SIZE);
     char *searched_if = (argc == 3) ? argv[2] : "";
     is_all_interfaces = !strcmp(argv[1], "-a") ? 1 : 0;
@@ -56,6 +55,8 @@ int main(int argc, char** argv)
         return -1;
     }
     
+    // format_result(if_tab, tab_len, message);
+
     // Free addresses
     freeifaddrs(interfaces);
     return 0;

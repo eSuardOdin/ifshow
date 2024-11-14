@@ -10,31 +10,84 @@
 
 #include "./if_functions.h"
 
+#define BUFFER_SIZE 2048
 
-int init_struct_tab(struct if_info* tab, struct ifaddrs *interfaces, unsigned char is_all_interfaces, char *searched_if, char *message)
+
+int format_result(struct if_info *tab, int tab_len, char *buf)
+{
+    // char[512]
+    for(int i = 0; i < tab_len; i++)
+    {
+        printf("Interface : %s\n", tab[i].ifname);
+        printf("\t---- IPv4 ----\n");
+        for(int j = 0; j < tab[i].v4_nb; j++)
+        {
+            printf(" - %s\n", tab[i].v4_addrs[j]);
+        }
+        printf("\t---- IPv6 ----\n");
+        for(int j = 0; j < tab[i].v6_nb; j++)
+        {
+            printf(" - %s\n", tab[i].v6_addrs[j]);
+        }
+        printf("\n\n");
+    }
+    return 0;
+}
+
+/**
+ * @brief 
+ * 
+ * @param tab The tab where formatted interfaces struct are going to
+ * @param interfaces The struct ifaddrs*
+ * @param is_all_interfaces 1 : -a, 0 : -i
+ * @param searched_if Named of the searched interface if -i
+ * @param message The buffer to send back 
+ * @return int 
+ */
+int init_struct_tab(struct if_info *tab, struct ifaddrs *interfaces, unsigned char is_all_interfaces, char *searched_if, char *message)
 {
     struct ifaddrs *ifa;
     int ifnb = 0;
+    struct if_info *p_ifc = NULL;
     // iterate trough list
     for(ifa = interfaces; ifa->ifa_next != NULL; ifa = ifa->ifa_next)
     {
         if(ifa->ifa_next == NULL)
             continue;
-        // If (-i and interface name ok or all interfaces) and ifname not duplicate 
-        if(
-            ((!is_all_interfaces && !strcmp(searched_if, ifa->ifa_name)) || is_all_interfaces) &&
-            !is_interface_included_struct(tab, ifa->ifa_name, ifnb))
+
+        // Get interface from tab
+        p_ifc = get_if_info(tab, ifa->ifa_name, ifnb);
+        // If interface not already in tab
+        if(p_ifc == NULL)
         {
+            // If -i and name of the interface does not match with searched one
+            if(!is_all_interfaces && strcmp(searched_if, ifa->ifa_name))
+                continue;
+            // If else, create new struct
             struct if_info ifc;
+            ifc.v4_nb = 0;
+            ifc.v4_addrs = NULL;
+            ifc.v6_nb = 0;
+            ifc.v6_addrs = NULL;
             strcpy(ifc.ifname, ifa->ifa_name);
+            // Resize tab
             tab = (struct if_info *) realloc(tab, (size_t) (ifnb + 1) * sizeof(struct if_info));
             if(tab == NULL)
             {
                 strcat(message, "Error in memory allocation\n");
                 return -1;
             }
+            // Add struct to tab and get pointer to it
             tab[ifnb] = ifc;
             ifnb++;
+            p_ifc = &tab[ifnb];
+        }
+
+        // Add address to struct
+        if(add_address(ifa, p_ifc) != 0)
+        {
+            sprintf(message, "Error while adding address to %s\n", p_ifc->ifname);
+            return -1;
         }
     }
 
@@ -52,23 +105,19 @@ int init_struct_tab(struct if_info* tab, struct ifaddrs *interfaces, unsigned ch
         return -1;
     }
 
+    printf("nb: %d\n", ifnb);
     for(int i = 0; i < ifnb; i++)
     {
         printf("%s\n", tab[i].ifname);
     }
+
+
+    format_result(tab, ifnb, message);
     return ifnb;
 }
 
 
-int is_interface_included_struct(struct if_info *tab, char* ifname, int count)
-{
-    if(!count) return 0;
-    for (int i = 0; i < count; i++) {
-        // printf("Comparing %s with %s\n", tab[i], ifname);
-        if(!strcmp(tab[i].ifname, ifname)) return 1;
-    }
-    return 0;
-}
+
 
 /**
  * @brief Checks in the table if an if_info is present (by name)
@@ -82,7 +131,6 @@ struct if_info* get_if_info(struct if_info *tab, char* ifname, int count)
 {
     if(!count) return NULL;
     for (int i = 0; i < count; i++) {
-        // printf("Comparing %s with %s\n", tab[i], ifname);
         if(!strcmp(tab[i].ifname, ifname)) return &tab[i];
     }
     return NULL;
@@ -90,25 +138,91 @@ struct if_info* get_if_info(struct if_info *tab, char* ifname, int count)
 
 
 
-int get_if_addresses(struct if_info *tab, struct ifaddrs *interfaces)
+int add_address(struct ifaddrs *base_addr, struct if_info *ifc)
 {
-    struct ifaddrs *ifa;
-    // Loop from adresses
-    for(ifa = interfaces; ifa->ifa_next != NULL; ifa = ifa->ifa_next)
+    char ip[INET6_ADDRSTRLEN+7];
+    char cidr[5];
+    unsigned int readable_mask = 0;
+
+    // ----- Branch IPv4 -----
+
+    if(base_addr->ifa_addr->sa_family == AF_INET) 
     {
-        if(ifa->ifa_addr == NULL)
+        struct sockaddr_in *addr = (struct sockaddr_in *) base_addr->ifa_addr;
+        unsigned int mask = ((struct sockaddr_in *) base_addr->ifa_netmask)->sin_addr.s_addr;
+        // Formatting address to readable format
+        inet_ntop(AF_INET, &addr->sin_addr,ip, sizeof(ip));
+        // Formatting v4 mask
+        while(mask)
         {
-            continue;
+            readable_mask+=(mask & 1);
+            mask >>= 1;
         }
-        // Branch v4 / V6
-        
+        sprintf(cidr, "/%d", readable_mask);
+        strcat(ip, cidr);
+        printf("%s\n", ip);
+
+        // Resize v6 tab
+        char **new_v4_addrs = (char **) realloc(ifc->v4_addrs, (ifc->v4_nb + 1) * sizeof(char *));
+        ifc->v4_addrs = new_v4_addrs;
+        if(ifc->v4_addrs == NULL)
+        {
+            return -1;
+        }
+        // Add ip address to interface and increment specific version counter
+        ifc->v4_addrs[ifc->v4_nb] = strdup(ip);
+        ifc->v4_nb++;
+
     }
-    // Format address
+
+    // ----- Branch IPv6 -----
+
+    else if(base_addr->ifa_addr->sa_family == AF_INET6)
+    {
+        struct sockaddr_in6 *addr = (struct sockaddr_in6 *) base_addr->ifa_addr;
+        // Mask of 16 bytes
+        u_int8_t *mask = ((struct sockaddr_in6 *) base_addr->ifa_netmask)->sin6_addr.s6_addr;
+        u_int8_t byte;
+
+        // Formatting address to readable format
+        inet_ntop(AF_INET6, &addr->sin6_addr,ip, sizeof(ip));
+        // Formatting v6 mask
+        for(int i = 0; i < 16; i++)
+        {
+            byte = mask[i];
+            while(byte > 0)
+            {
+                if(byte & 1)
+                {
+                    readable_mask++;
+                }
+                byte /= 2;
+            }
+        }
+        sprintf(cidr, "/%d", readable_mask);
+        strcat(ip, cidr);
+        printf("%s\n", ip);
+
+        // Resize v6 tab
+        char **new_v6_addrs = (char **) realloc(ifc->v6_addrs, (ifc->v6_nb + 1) * sizeof(char *));
+        ifc->v6_addrs = new_v6_addrs;
+        if(ifc->v6_addrs == NULL)
+        {
+            return -1;
+        }
+        // Add ip address to interface and increment specific version counter
+        ifc->v6_addrs[ifc->v6_nb] = strdup(ip);
+        ifc->v6_nb++;
+    }
+    return 0;
 }
 
 
 
-
+/**
+ * @brief Shows help for command instruction
+ * 
+ */
 void show_console_usage()
 {
     printf("COMMAND USAGE: ifshow (-i <ifname> | -a)\n");
