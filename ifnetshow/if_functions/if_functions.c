@@ -15,21 +15,45 @@
 
 int format_result(struct if_info *tab, int tab_len, char *buf)
 {
-    // char[512]
+    char line[128]; 
     for(int i = 0; i < tab_len; i++)
     {
-        printf("Interface : %s\n", tab[i].ifname);
-        printf("\t---- IPv4 ----\n");
-        for(int j = 0; j < tab[i].v4_nb; j++)
+        // printf( "###############################\nInterface : %s\n", tab[i].ifname);
+        sprintf(line, "Interface : %s\n", tab[i].ifname);
+        strcat(buf, line);
+        if(!(tab[i].v4_nb+tab[i].v6_nb))
         {
-            printf(" - %s\n", tab[i].v4_addrs[j]);
+            // printf("No adresses for this interface\n");
+            sprintf(line, "No adresses for this interface\n");
+            strcat(buf, line);
         }
-        printf("\t---- IPv6 ----\n");
-        for(int j = 0; j < tab[i].v6_nb; j++)
+        if(tab[i].v4_nb)
         {
-            printf(" - %s\n", tab[i].v6_addrs[j]);
+            // printf("\n---- IPv4 ----\n");
+            sprintf(line, "\n---- IPv4 ----\n");
+            strcat(buf, line);
+            for(int j = 0; j < tab[i].v4_nb; j++)
+            {
+                // printf("- %s\n", tab[i].v4_addrs[j]);
+                sprintf(line, "- %s\n", tab[i].v4_addrs[j]);
+                strcat(buf, line);
+            }
         }
-        printf("\n\n");
+        if(tab[i].v6_nb)
+        {
+            // printf( "---- IPv6 ----\n");
+            sprintf(line, "---- IPv6 ----\n");
+            strcat(buf, line);
+            for(int j = 0; j < tab[i].v6_nb; j++)
+            {
+                // printf("- %s\n", tab[i].v6_addrs[j]);
+                sprintf(line, "- %s\n", tab[i].v6_addrs[j]);
+                strcat(buf, line);
+            }
+        }
+        printf( "\n");
+        sprintf(line, "\n");
+        strcat(buf, line);
     }
     return 0;
 }
@@ -37,18 +61,27 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
 /**
  * @brief 
  * 
- * @param tab The tab where formatted interfaces struct are going to
  * @param interfaces The struct ifaddrs*
  * @param is_all_interfaces 1 : -a, 0 : -i
  * @param searched_if Named of the searched interface if -i
  * @param message The buffer to send back 
  * @return int 
  */
-int init_struct_tab(struct if_info *tab, struct ifaddrs *interfaces, unsigned char is_all_interfaces, char *searched_if, char *message)
+int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
 {
-    struct ifaddrs *ifa;
+    struct if_info *tab = NULL;
+    struct ifaddrs *interfaces, *ifa;
     int ifnb = 0;
     struct if_info *p_ifc = NULL;
+
+
+    // Get interfaces and exit if error
+    if(getifaddrs(&interfaces) != 0)
+    {
+        fprintf(stderr, "Could not getifaddrs()\n");
+        return -1;
+    }
+
     // iterate trough list
     for(ifa = interfaces; ifa->ifa_next != NULL; ifa = ifa->ifa_next)
     {
@@ -105,13 +138,6 @@ int init_struct_tab(struct if_info *tab, struct ifaddrs *interfaces, unsigned ch
         return -1;
     }
 
-    printf("nb: %d\n", ifnb);
-    for(int i = 0; i < ifnb; i++)
-    {
-        printf("%s\n", tab[i].ifname);
-    }
-
-
     format_result(tab, ifnb, message);
     return ifnb;
 }
@@ -145,7 +171,6 @@ int add_address(struct ifaddrs *base_addr, struct if_info *ifc)
     unsigned int readable_mask = 0;
 
     // ----- Branch IPv4 -----
-
     if(base_addr->ifa_addr->sa_family == AF_INET) 
     {
         struct sockaddr_in *addr = (struct sockaddr_in *) base_addr->ifa_addr;
@@ -160,7 +185,7 @@ int add_address(struct ifaddrs *base_addr, struct if_info *ifc)
         }
         sprintf(cidr, "/%d", readable_mask);
         strcat(ip, cidr);
-        printf("%s\n", ip);
+        
 
         // Resize v6 tab
         char **new_v4_addrs = (char **) realloc(ifc->v4_addrs, (ifc->v4_nb + 1) * sizeof(char *));
@@ -176,7 +201,6 @@ int add_address(struct ifaddrs *base_addr, struct if_info *ifc)
     }
 
     // ----- Branch IPv6 -----
-
     else if(base_addr->ifa_addr->sa_family == AF_INET6)
     {
         struct sockaddr_in6 *addr = (struct sockaddr_in6 *) base_addr->ifa_addr;
@@ -201,7 +225,7 @@ int add_address(struct ifaddrs *base_addr, struct if_info *ifc)
         }
         sprintf(cidr, "/%d", readable_mask);
         strcat(ip, cidr);
-        printf("%s\n", ip);
+        
 
         // Resize v6 tab
         char **new_v6_addrs = (char **) realloc(ifc->v6_addrs, (ifc->v6_nb + 1) * sizeof(char *));

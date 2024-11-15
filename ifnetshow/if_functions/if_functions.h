@@ -31,7 +31,7 @@ struct if_info* get_if_info(struct if_info *tab, char* ifname, int count);
 // int is_interface_included(char** tab, char* ifname, int count);
 
 void show_console_usage();
-int init_struct_tab(struct if_info *tab, struct ifaddrs *interfaces, unsigned char is_all_interfaces, char *searched_if, char *message);
+int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message);
 int add_address(struct ifaddrs *addr, struct if_info *ifc);
 int get_if_addresses(struct if_info *tab, struct ifaddrs *interfaces);
 int format_result(struct if_info *tab, int tab_len, char *buf);
