@@ -1,5 +1,5 @@
 #include <arpa/inet.h>
-#include <bits/types/struct_iovec.h>
+//#include <bits/types/struct_iovec.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <string.h>
 #include "./agent.h"
+#include "../../../if_functions/if_functions.h"
 
 int handle_client(int sock)
 {
@@ -14,16 +15,8 @@ int handle_client(int sock)
     return 0;
 }
 
-// Check if the request is well formatted
-// client:[ifnetshow -n addr] true request [-i ifname]
-int handle_request(int sock, char *req, char *res)
-{
-    read(sock, req, (size_t)1024);
-    
-}
 
-
-int run_server(conf_sock socket_conf, char *buffer)
+int run_server(conf_sock socket_conf/*, char *buffer*/)
 {
     // Create socket
     int sock;
@@ -51,10 +44,8 @@ int run_server(conf_sock socket_conf, char *buffer)
 
     // Accept connection
     int connected_socket;
-	struct sockaddr_storage clients_addr;
-    // char buffer[1024];
-    char req[1024];
-    char res[1024];
+    char req[2048] = {0};
+    char res[2048] = {0};
     while (1) {
         if((connected_socket = accept(sock, (struct sockaddr *) &socket_conf.address, (socklen_t*)&socket_conf.address_len)) == -1)
         {
@@ -64,14 +55,19 @@ int run_server(conf_sock socket_conf, char *buffer)
         }
         printf("New connection !\n");
         // Read request
-		read(connected_socket, buffer, (size_t)1024);
-        printf("%s\n", buffer);
+		read(connected_socket, req, (size_t)2048);
+        // printf("%s\n", buffer);
+        
+        int option = (req[0] == '\0') ? 1 : 0; // Just for more readable ifshow call
         // Send response
-        sprintf(buffer, "Hello client, you have socket n°%d\n", connected_socket);
-        send(connected_socket, buffer, (size_t)1024, 0);
-
+        ifshow(option, req, res);
+        
+        send(connected_socket, res, (size_t)2048, 0);
+        // Clear buffer
+        memset(res, 0, 2048);
         handle_client(connected_socket);
     }
         
     return connected_socket;
 }
+

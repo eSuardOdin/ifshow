@@ -15,10 +15,11 @@
 
 int format_result(struct if_info *tab, int tab_len, char *buf)
 {
-    char line[128]; 
+    char line[256] = {0};
     for(int i = 0; i < tab_len; i++)
     {
-        // printf( "###############################\nInterface : %s\n", tab[i].ifname);
+        // printf("At loop beginning, getting interface name\n");
+
         sprintf(line, "Interface : %s\n", tab[i].ifname);
         strcat(buf, line);
         if(!(tab[i].v4_nb+tab[i].v6_nb))
@@ -30,28 +31,24 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
         if(tab[i].v4_nb)
         {
             // printf("\n---- IPv4 ----\n");
-            sprintf(line, "\n---- IPv4 ----\n");
+            sprintf(line, "---- IPv4 ----\n");
             strcat(buf, line);
             for(int j = 0; j < tab[i].v4_nb; j++)
             {
-                // printf("- %s\n", tab[i].v4_addrs[j]);
                 sprintf(line, "- %s\n", tab[i].v4_addrs[j]);
                 strcat(buf, line);
             }
         }
         if(tab[i].v6_nb)
         {
-            // printf( "---- IPv6 ----\n");
             sprintf(line, "---- IPv6 ----\n");
             strcat(buf, line);
             for(int j = 0; j < tab[i].v6_nb; j++)
             {
-                // printf("- %s\n", tab[i].v6_addrs[j]);
                 sprintf(line, "- %s\n", tab[i].v6_addrs[j]);
                 strcat(buf, line);
             }
         }
-        printf( "\n");
         sprintf(line, "\n");
         strcat(buf, line);
     }
@@ -69,6 +66,8 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
  */
 int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
 {
+    printf("Entering ifshow\n");
+
     struct if_info *tab = NULL;
     struct ifaddrs *interfaces, *ifa;
     int ifnb = 0;
@@ -86,6 +85,9 @@ int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
     for(ifa = interfaces; ifa->ifa_next != NULL; ifa = ifa->ifa_next)
     {
         if(ifa->ifa_next == NULL)
+            continue;
+
+        if (ifa->ifa_addr == NULL || ifa->ifa_name == NULL /*|| strcmp(ifa->ifa_name, "pim6reg") == 0*/)
             continue;
 
         // Get interface from tab
@@ -112,12 +114,12 @@ int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
             }
             // Add struct to tab and get pointer to it
             tab[ifnb] = ifc;
-            ifnb++;
             p_ifc = &tab[ifnb];
+            ifnb++;
         }
 
         // Add address to struct
-        if(add_address(ifa, p_ifc) != 0)
+        if(add_address(ifa, p_ifc))
         {
             sprintf(message, "Error while adding address to %s\n", p_ifc->ifname);
             return -1;
@@ -139,6 +141,8 @@ int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
     }
 
     format_result(tab, ifnb, message);
+    // Free addresses
+    freeifaddrs(interfaces);
     return ifnb;
 }
 
@@ -247,7 +251,7 @@ int add_address(struct ifaddrs *base_addr, struct if_info *ifc)
  * @brief Shows help for command instruction
  * 
  */
-void show_console_usage()
+void show_command_usage()
 {
     printf("COMMAND USAGE: ifshow (-i <ifname> | -a)\n");
     printf("Options:\n");

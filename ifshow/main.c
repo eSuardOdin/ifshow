@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-#include "./if_functions/if_functions.h"
+#include "../if_functions/if_functions.h"
 
 #define BUFFER_SIZE 2048
 
@@ -28,8 +28,6 @@ int main(int argc, char** argv)
 
     int nb_if;  // Option -a -> 1
     unsigned char is_all_interfaces;
-    // Interfaces linked list
-    struct ifaddrs *interfaces;
 
     char *message = malloc(BUFFER_SIZE);
     char *searched_if = (argc == 3) ? argv[2] : "";
@@ -44,10 +42,8 @@ int main(int argc, char** argv)
         return -1;
     }
     
-    // format_result(if_tab, tab_len, message);
     printf("Result : \n%s", message);
-    // Free addresses
-    freeifaddrs(interfaces);
+    
     return 0;
 }
 
