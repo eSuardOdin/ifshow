@@ -10,7 +10,53 @@
 
 #include "./if_functions.h"
 
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 4096
+
+
+// int format_result(struct if_info *tab, int tab_len, char *buf)
+// {
+//     char line[256] = {0};
+//     for(int i = 0; i < tab_len; i++)
+//     {
+//         printf("At loop beginning, getting interface name\n");
+
+//         sprintf(line, "Interface : %s\n", tab[i].ifname);
+//         strcat(buf, line);
+//         if(!(tab[i].v4_nb+tab[i].v6_nb))
+//         {
+//             // printf("No adresses for this interface\n");
+//             sprintf(line, "No adresses for this interface\n");
+//             strcat(buf, line);
+//         }
+//         if(tab[i].v4_nb)
+//         {
+//             // printf("\n---- IPv4 ----\n");
+//             sprintf(line, "---- IPv4 ----\n");
+//             strcat(buf, line);
+//             for(int j = 0; j < tab[i].v4_nb; j++)
+//             {
+//                 sprintf(line, "- %s\n", tab[i].v4_addrs[j]);
+//                 strcat(buf, line);
+//             }
+//         }
+//         if(tab[i].v6_nb)
+//         {
+//             sprintf(line, "---- IPv6 ----\n");
+//             strcat(buf, line);
+//             for(int j = 0; j < tab[i].v6_nb; j++)
+//             {
+//                 sprintf(line, "- %s\n", tab[i].v6_addrs[j]);
+//                 strcat(buf, line);
+//             }
+//         }
+//         // printf("%s\n", buf);
+//         sprintf(line, "\n");
+//         strcat(buf, line);
+//     }
+//     return 0;
+// }
+
+
 
 
 int format_result(struct if_info *tab, int tab_len, char *buf)
@@ -18,9 +64,7 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
     char line[256] = {0};
     for(int i = 0; i < tab_len; i++)
     {
-        // printf("At loop beginning, getting interface name\n");
-
-        sprintf(line, "Interface : %s\n", tab[i].ifname);
+        sprintf(line, "%d: %s\n", i, tab[i].ifname);
         strcat(buf, line);
         if(!(tab[i].v4_nb+tab[i].v6_nb))
         {
@@ -31,21 +75,22 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
         if(tab[i].v4_nb)
         {
             // printf("\n---- IPv4 ----\n");
-            sprintf(line, "---- IPv4 ----\n");
-            strcat(buf, line);
+            // sprintf(line, "inet :");
+            // strcat(buf, line);
             for(int j = 0; j < tab[i].v4_nb; j++)
             {
-                sprintf(line, "- %s\n", tab[i].v4_addrs[j]);
+                sprintf(line, "\tinet: %s\n", tab[i].v4_addrs[j]);
                 strcat(buf, line);
             }
         }
         if(tab[i].v6_nb)
         {
-            sprintf(line, "---- IPv6 ----\n");
-            strcat(buf, line);
+            // sprintf(line, "inet6 :");
+            // strcat(buf, line);
             for(int j = 0; j < tab[i].v6_nb; j++)
             {
-                sprintf(line, "- %s\n", tab[i].v6_addrs[j]);
+                //printf("Working with %s\n", tab[i].v6_addrs[j]);
+                sprintf(line, "\tinet6: %s\n", tab[i].v6_addrs[j]);
                 strcat(buf, line);
             }
         }
@@ -54,6 +99,11 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
     }
     return 0;
 }
+
+
+
+
+
 
 /**
  * @brief 
@@ -66,8 +116,6 @@ int format_result(struct if_info *tab, int tab_len, char *buf)
  */
 int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
 {
-    printf("Entering ifshow\n");
-
     struct if_info *tab = NULL;
     struct ifaddrs *interfaces, *ifa;
     int ifnb = 0;
@@ -82,10 +130,11 @@ int ifshow(unsigned char is_all_interfaces, char *searched_if, char *message)
     }
 
     // iterate trough list
-    for(ifa = interfaces; ifa->ifa_next != NULL; ifa = ifa->ifa_next)
+    for(ifa = interfaces; ifa/*->ifa_next*/ != NULL; ifa = ifa->ifa_next)
+    // for(ifa = interfaces; ifa != NULL; ifa = ifa->ifa_next)
     {
-        if(ifa->ifa_next == NULL)
-            continue;
+        // if(ifa->ifa_next == NULL)
+        //     continue;
 
         if (ifa->ifa_addr == NULL || ifa->ifa_name == NULL /*|| strcmp(ifa->ifa_name, "pim6reg") == 0*/)
             continue;

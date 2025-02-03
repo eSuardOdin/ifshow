@@ -42,7 +42,7 @@ int main(int argc, char** argv)
         return -1;
     }
     
-    printf("Result : \n%s", message);
+    printf("%s", message);
     
     return 0;
 }
